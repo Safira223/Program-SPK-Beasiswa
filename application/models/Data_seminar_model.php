@@ -1,0 +1,104 @@
+<?php
+
+class Data_seminar_model extends CI_model 
+{
+    private $_table = "data_seminar";
+
+    public $user_id, $kategori, $judul, $penyelenggara, $scala, $tahun, $sertifikat;
+
+    public function rules()
+    {
+        return [
+            ['field' => 'kategori', 'label' => 'Kategori', 'rules' => 'required'],
+
+            ['field' => 'judul', 'label' => 'Judul', 'rules' => 'required'],
+
+            ['field' => 'scala', 'label' => 'Skala', 'rules' => 'required'],
+
+            ['field' => 'tahun', 'label' => 'Tahun', 'rules' => 'required'],
+
+        ];
+    }
+
+    public function getByUserId($id)
+    {
+        return $this->db->get_where($this->_table, ['user_id' => $id])->result();
+    }
+
+    public function getById($id)
+    {
+        return $this->db->get_where($this->_table, ["seminar_id" => $id])->row();
+    }
+
+    public function save($user_id)
+    {
+        $post = $this->input->post();
+        $this->user_id = $user_id;
+        $this->kategori = $post['kategori'];
+        $this->judul = $post['judul'];
+        $this->scala = $post['scala'];
+        $this->tahun = $post['tahun'];
+        $this->penyelenggara = $post['penyelenggara'];
+        
+
+        if(!empty($_FILES["sertifikat"]["name"])) {
+            $this->sertifikat = $this->upload_file('sertifikat seminar','sertifikat');
+        }
+
+        return $this->db->insert($this->_table, $this);
+    }
+
+    public function update($id)
+    {
+        $post = $this->input->post();
+        if ($this->getById($id)) {
+        $data_seminar = $this->getById($id);
+        $this->user_id = $data_seminar->user_id;
+        $this->kategori = $post['kategori'];
+        $this->judul = $post['judul'];
+        $this->scala = $post['scala'];
+        $this->tahun = $post['tahun'];
+        $this->penyelenggara = $post['penyelenggara'];
+
+        if(!empty($_FILES["sertifikat"]["name"])) {
+            $path = './assets/sertifikat seminar/'.$data_seminar->sertifikat;
+            unlink($path);
+            $this->sertifikat = $this->upload_file('sertifikat seminar','sertifikat');
+        }else {
+            $this->sertifikat = $data_seminar->sertifikat;
+        }
+        
+        return $this->db->update($this->_table, $this, array('seminar_id' => $id));
+        }
+    }
+    public function upload_file($folder,$name){ 
+        $config['upload_path'] = './assets/'.$folder.''; //siapkan path untuk upload file
+        $config['allowed_types']    = 'png|jpg|jpeg|pdf'; //siapkan format file
+        $config['file_name']        = 'image' . time(); //rename file yang diupload
+
+        // $this->load->library('upload', $config);
+        $this->load->library('upload');
+        $this->upload->initialize($config);
+
+        if ($this->upload->do_upload($name)) {
+            //fetch data upload
+            $file   = $this->upload->data();
+            $filename = $file['file_name'];
+            return $filename;
+        }else {
+            $error = $this->upload->display_errors(); //tampilkan pesan error jika file gagal diupload
+            $this->general_model->generatePesan($error,"error");
+            return "Error";
+        }
+    }
+
+    public function delete($id)
+    {
+        $data = $this->db->query("SELECT * FROM data_seminar WHERE seminar_id = ".$id." ")->row();
+
+        $path = './assets/sertifikat seminar/'.$data->sertifikat;
+        if (unlink($path)) {
+            return $this->db->delete($this->_table,array('seminar_id' => $id));
+        }
+    }
+}
